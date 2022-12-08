@@ -2,9 +2,12 @@
 
 ![Gatery logo](https://github.com/synogate/gatery/raw/master/doc/gatery_logo_500.svg)
 
-In this coding challenge, the goal is to implement ...
+In this coding challenge, the goal is to implement [pulse width modulation (PWM)](https://en.wikipedia.org/wiki/Pulse-width_modulation) in gatery.
+Given an `UInt` signal `value` that encodes the duty cycle as $d = \frac{value}{2^{bitwidth(value)}}$, the PWM function is to generate a single bit output signal that is asserted $d \cdot 100\% $ of the time. The given 1MHz system clock can be used, no extra clock is required.
 
-Details are listed in the main.cpp file.
+The given testbench does not check for stable behavior during changes of `value`, but taking this into account is a plus.
+
+For details, find the function `Bit pwm(UInt value)` in the `source/main.cpp` file.
 
 ## Getting Started
 
@@ -47,6 +50,8 @@ This is a list of the most important syntax constructs in gatery. See the docume
 	UInt undefined_12_wide_uint(12_b);
 	UInt undefined_16_wide_uint;
 	undefined_16_wide_uint = BitWidth(16);
+
+    UInt another_16_wide_uint = undefined_16_wide_uint.width(); // Only copies the width, but does not connect the signals.
 ```
 
 ### Signal Naming
@@ -286,6 +291,13 @@ void functionB()
 
     Bit b = ...;
     b_delayed_w_reset = reg(b, '0'); // reset to zero
+
+    // Use loop semantics to build state:
+    Bit enableCounter = ...;
+    UInt counter_10b = 10_b;
+    IF (enableCounter)
+        counter_10b += 1;
+    counter_10b = reg(counter_10b, 0);
 ```
 
 

@@ -17,26 +17,20 @@ using namespace gtry::utils;
 
 
 /**
- * @brief Implement the challenge here
- * 
- * @param enable 
- * @return Bit 
+ * @brief Implement the challenge here!
+ * @details In this coding challenge, the goal is to implement PWM in gatery.
+ *	Given an UInt signal that encodes the duty cycle as $d = \frac{value}{2^{bitwidth(value)}}$, the PWM function is to
+ *  generate a single bit output signal that is asserted $d \cdot 100\% $ of the time. The given 1MHz system clock can be used, no
+ *  extra clock is required.
+ *
+ * @param value The desired duty cycle, encoded as an integer value.
  */
-Bit challenge(Bit enable)
+Bit pwm(UInt value)
 {
-	hlim::ClockRational blinkFrequency{1, 1}; // 1Hz
-	size_t counterMax = hlim::floor(ClockScope::getClk().absoluteFrequency() / blinkFrequency);
-	UInt counter = BitWidth(utils::Log2C(counterMax+1));
-	
-	IF (enable)
-		counter += 1;
 
-	counter = reg(counter, 0);
-	HCL_NAMED(counter);
+	// ...
 
-	Bit ledOn = counter.msb();
-	HCL_NAMED(ledOn);
-	return ledOn;
+	return 'x';
 }
 
 int main()
@@ -50,12 +44,12 @@ int main()
 	}
 
 	// Build circuit
-	Clock clock{{.absoluteFrequency = 1'000}}; // 1KHz
+	Clock clock{{.absoluteFrequency = 1'000'000}}; // 1MHz
 	ClockScope clockScope{ clock };
 
-	auto enable = pinIn().setName("button");
+	UInt value = pinIn(4_b).setName("value");
 	
-	auto ledOn = challenge(enable);
+	Bit ledOn = pwm(value);
 
 	pinOut(ledOn).setName("led");
 
@@ -65,29 +59,39 @@ int main()
 	sim::ReferenceSimulator simulator;
 	simulator.compileProgram(design.getCircuit());
 
-	simulator.addSimulationProcess([=, &clock]()->SimProcess{
+	simulator.addSimulationProcess([=]()->SimProcess{
 
-		fork([=, &clock]()->SimProcess{
-			while (true) {
+		
+		auto checkAverage = [](auto &pin, size_t duration, const Clock &clock)-> SimFunction<float> {
+			size_t numerator = 0;
+			for ([[maybe_unused]] auto i : Range(duration)) {
+				co_await OnClk(clock);
+				if (!simu(pin).allDefined()) std::cerr << "Error: Output pin is undefined, check waveform at " << toNanoseconds(getCurrentSimulationTime()) << " ns." << std::endl;
+				if (simu(pin) == '1')
+					numerator++;
+			}
+			co_return (float) numerator / duration;
+		};
+
+
+		simu(value) = 0;
+
+		co_await OnClk(clock);
+
+		for (auto i : {0, 1, 8, 10, 15}) {
+			std::cout << "Starting test with value " << i << " at " << toNanoseconds(getCurrentSimulationTime()) << " ns." << std::endl;
+			simu(value) = i;
+			// We don't define how quickly the PWM should adapt, so be generous with the latency.
+			for ([[maybe_unused]] auto j : Range(32))
 				co_await OnClk(clock);
 
-				if (simu(ledOn) == '1')
-					std::cout << "LED is on" << std::endl;
-				else if (simu(ledOn) == '0')
-					std::cout << "LED is off" << std::endl;
-				else
-					std::cout << "LED is undefined" << std::endl;
-			}
-		});
+			float avg = co_await checkAverage(ledOn, 200, clock);
+			float expectedAvg = (float)i / (1 << value.size());
 
-
-		std::cout << "Disabling" << std::endl;
-		simu(enable) = '0';
-		for ([[maybe_unused]]auto i : Range(50))
-			co_await AfterClk(clock);
-
-		std::cout << "Enabling" << std::endl;
-		simu(enable) = '1';
+			std::cout << "Measured average " << avg << " expected " << expectedAvg << std::endl;
+			if (std::abs(avg - expectedAvg) > 0.1)
+				std::cerr << "Difference exceeds expectations at " << toNanoseconds(getCurrentSimulationTime()) << " ns." << std::endl;
+		}
 	});
 
 
@@ -110,7 +114,7 @@ int main()
 
 	// Run simulation
 	simulator.powerOn();
-	simulator.advance(hlim::ClockRational(5000,1'000));
+	simulator.advance(hlim::ClockRational(2000,1'000'000));
 
 	return 0;
 }
