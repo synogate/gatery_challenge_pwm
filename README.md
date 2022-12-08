@@ -25,7 +25,7 @@ Files can be downloaded by right-clicking them in the Explorer view and selectin
 
 Press F5 to compile and run. Any compilation errors will be shown in the Terminal tab, as well as (mixed with other less important "problems") in the Problems tab. In the absence of compilation errors, the code will run and simulate. The Output tab will show information such as detected failures.
 
-A `.vcd` waveform of the simulation will be written to bin/linux-x86_64-Debug/waveform.vcd. It can be downloaded and inspected locally, or opened in VS Code by double clicking.
+A `.vcd` waveform of the simulation will be written to bin/linux-x86_64-Debug/waveform.vcd. It can be downloaded and inspected locally, or opened in VS Code by double clicking (does not work in firefox).
 
 ## Gatery Syntax Cheat Sheet
 
